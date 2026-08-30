@@ -78,26 +78,20 @@ Under **Rich Presence → Art Assets**, upload images with these exact keys. The
 key is taken from the filename you upload, minus the extension, so uploading
 `team_blue.png` gives you the key `team_blue` with nothing else to do.
 
-| Key              | Shown as              | Image                                |
-| ---------------- | --------------------- | ------------------------------------ |
-| `rocket_league`  | the large icon        | the Rocket League logo — see below   |
-| `team_blue`      | small badge, on Blue  | `assets/discord/team_blue.png`       |
-| `team_orange`    | small badge, on Orange| `assets/discord/team_orange.png`     |
+| Key           | Shown as               | Image                            |
+| ------------- | ---------------------- | -------------------------------- |
+| `team_blue`   | small badge, on Blue   | `assets/discord/team_blue.png`   |
+| `team_orange` | small badge, on Orange | `assets/discord/team_orange.png` |
 
 The two team badges ship with this repo, already 512x512 with a transparent
 background. `assets/discord/make-badges.ps1` is what drew them - rerun it with
 an output directory to change the colors.
 
-For `rocket_league`, any square Rocket League logo works. Discord hosts the
-image itself, so it needs to be a file on disk, not a link:
-
-- The game's own icon: right-click Rocket League in Steam → **Manage → Browse
-  local files**, and the .exe's icon can be pulled out with any icon
-  extractor. In the Epic launcher the icon lives under the install directory
-  too.
-- The Rocket League press kit at <https://www.rocketleague.com/en/news> and the
-  logo on <https://en.wikipedia.org/wiki/Rocket_League> are both easy sources
-  for a clean, high-resolution version.
+The large icon has no key to upload. It defaults to the LobbyIQ logo
+(`assets/brand/logo.png`) served straight from this repository over https, so
+it needs nothing uploaded to any application, yours included. Override
+`discord_assets.logo` to use something else - a URL, or a key you have
+uploaded.
 
 Discord requires at least 512x512 and rejects anything smaller, so scale up if
 your source is a 256px icon.

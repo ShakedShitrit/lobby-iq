@@ -18,3 +18,17 @@ import "embed"
 //
 //go:embed ranks/*.png
 var Ranks embed.FS
+
+// EmblemFile is the LobbyIQ mark, without the wordmark - the window icon and
+// the badge in the GUI's header.
+const EmblemFile = "brand/emblem.png"
+
+// Brand holds the app's own art.
+//
+// Only the emblem is embedded. brand/logo.png is the full lockup, wordmark and
+// tagline included: it is served to Discord over https rather than drawn by
+// the binary, so compiling it in would cost a quarter of a megabyte to display
+// nothing.
+//
+//go:embed brand/emblem.png
+var Brand embed.FS

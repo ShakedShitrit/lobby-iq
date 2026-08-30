@@ -201,6 +201,11 @@ func RunGUI(cfg *config.Config) error {
 	// something happened to change the theme.
 	pal = paletteFor(a.Settings().ThemeVariant())
 
+	// On the app rather than the window, so the sign-in window inherits it too.
+	if emblem := brandEmblem(); emblem != nil {
+		a.SetIcon(emblem)
+	}
+
 	w := a.NewWindow("LobbyIQ")
 
 	var mu sync.Mutex
@@ -456,9 +461,16 @@ func RunGUI(cfg *config.Config) error {
 		}()
 	}
 
+	// The mark and the two lines it labels are one block, so the emblem sits
+	// beside them rather than above: stacked, it would read as a separate
+	// banner and push the table down by its full height.
+	var brandRow fyne.CanvasObject = container.NewVBox(title, arenaLabel)
+	if emblem := newBrandEmblem(); emblem != nil {
+		brandRow = container.NewHBox(emblem, brandRow)
+	}
+
 	headerRows := []fyne.CanvasObject{
-		title,
-		arenaLabel,
+		brandRow,
 		container.NewBorder(nil, nil, nil, resetSession, sessionBox),
 	}
 	// Left out rather than shown disabled when there are no ratings: an empty

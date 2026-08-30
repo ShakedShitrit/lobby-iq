@@ -14,7 +14,7 @@ discord_client_id: "1541131405763940492"
 # the Discord application, or an https:// URL that Discord loads directly - a
 # URL needs nothing uploaded anywhere. Defaults are the uploaded-asset keys.
 discord_assets:
-  logo: "rocket_league"
+  logo: "https://raw.githubusercontent.com/ShakedShitrit/lobby-iq/main/assets/brand/logo.png"
   blue: "team_blue"
   orange: "team_orange"
 

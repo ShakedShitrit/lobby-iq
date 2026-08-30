@@ -1,3 +1,5 @@
+<img src="assets/brand/logo.png" width="160" align="right" alt="">
+
 # LobbyIQ
 
 Live scoreboard for Rocket League that shows **everyone in the lobby, with

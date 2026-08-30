@@ -108,7 +108,11 @@ func Load(cfgFile string, flags *pflag.FlagSet) (*Config, error) {
 	v.SetDefault("lightweight", false)
 	v.SetDefault("discord_client_id", "")
 	v.SetDefault("discord_disabled", false)
-	v.SetDefault("discord_assets.logo", "rocket_league")
+	// A URL rather than an uploaded-asset key, so the large icon works without
+	// anything having been uploaded to whichever Discord application is in
+	// use. Discord fetches it once and hosts its own copy.
+	v.SetDefault("discord_assets.logo",
+		"https://raw.githubusercontent.com/ShakedShitrit/lobby-iq/main/assets/brand/logo.png")
 	v.SetDefault("discord_assets.blue", "team_blue")
 	v.SetDefault("discord_assets.orange", "team_orange")
 	// "config" preserves existing behaviour for anyone upgrading, who has not
