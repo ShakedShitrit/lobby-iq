@@ -115,7 +115,7 @@ begin
     if not Exec(ExpandConstant('{app}\{#AppExeName}'), 'setup --quiet', '',
                 SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     begin
-      MsgBox('LobbyIQ was installed, but its Rocket League setup could not be' #13#10
+      MsgBox('LobbyIQ was installed, but its Rocket League setup could not be' + #13#10 +
              'started. Open LobbyIQ and it will tell you what is wrong.',
              mbInformation, MB_OK);
       exit;
@@ -125,15 +125,15 @@ begin
       exit;
 
     Message :=
-      'Rocket League''s match export could not be switched on.' #13#10 #13#10
-      'The usual reason is that Rocket League is running: it rewrites its' #13#10
-      'settings when it closes, which would undo the change.' #13#10 #13#10
+      'Rocket League''s match export could not be switched on.' + #13#10 + #13#10 +
+      'The usual reason is that Rocket League is running: it rewrites its' + #13#10 +
+      'settings when it closes, which would undo the change.' + #13#10 + #13#10 +
       'Close Rocket League, then choose Retry.';
 
     if MsgBox(Message, mbError, MB_RETRYCANCEL) = IDCANCEL then
     begin
-      MsgBox('Skipped. Once Rocket League is closed, run this installer again' #13#10
-             'to finish - or LobbyIQ will do it the next time it starts.',
+      MsgBox('Skipped. Once Rocket League is closed, run LobbyIQ once more' + #13#10 +
+             'after closing the game and it will finish the job.',
              mbInformation, MB_OK);
       exit;
     end;
@@ -162,7 +162,7 @@ begin
   if not FileExists(ConfigPath) then
     exit;
 
-  if MsgBox('Remove your LobbyIQ settings (config.yaml) as well?' #13#10 #13#10
+  if MsgBox('Remove your LobbyIQ settings (config.yaml) as well?' + #13#10 + #13#10 +
             'Choose No to keep them for a future reinstall.',
             mbConfirmation, MB_YESNO) = IDYES then
     DeleteFile(ConfigPath);
