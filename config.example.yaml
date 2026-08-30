@@ -1,9 +1,14 @@
 port: 49123
 log_level: info
 
-# Discord Rich Presence. Set this to your Discord application's client ID to
-# publish the live match to your Discord profile; see DISCORD.md.
-discord_client_id: ""
+# Discord Rich Presence: publishes the live match to your Discord profile.
+#
+# The ID below is LobbyIQ's own Discord application, shared so this works with
+# nothing to set up - the art it needs is already uploaded to it. It is not a
+# credential; a client ID travels inside every presence your Discord client
+# already sends. Empty this line to turn the card off, or put your own
+# application's ID here to have it carry your own name and art. See DISCORD.md.
+discord_client_id: "1541131405763940492"
 
 # The card's images. Each value is either the key of an art asset uploaded to
 # the Discord application, or an https:// URL that Discord loads directly - a

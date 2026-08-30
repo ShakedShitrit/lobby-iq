@@ -64,8 +64,10 @@ paste back the code it ends on. The token is written to
 
 ### Discord Rich Presence
 
-Optional, and off until you set `discord_client_id`. Full walkthrough in
-[DISCORD.md](DISCORD.md).
+Works out of the box — `config.example.yaml` ships a client ID and the art is
+already uploaded to it, so there is no developer portal detour. Clear
+`discord_client_id` to turn it off, or point it at your own application to
+carry your own name and art. Details in [DISCORD.md](DISCORD.md).
 
 ## Command line
 
