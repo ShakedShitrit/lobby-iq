@@ -2,6 +2,11 @@
 lobby-iq.exe
 lobby-iq
 
+# Where the installer build stages the exe and drops the finished setup.exe.
+# resource.syso is NOT ignored: it carries the app icon and is committed so a
+# plain `go build` produces a branded binary.
+/dist/
+
 # Runtime state, written next to the exe. All of it is personal: players.json
 # and capture.json carry other players' names and account IDs, self.json
 # carries yours.

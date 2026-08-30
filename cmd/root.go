@@ -47,6 +47,7 @@ func newRootCmd() *cobra.Command {
 	root.Flags().Bool("no-discord", false, "disable Discord Rich Presence even if a client ID is configured")
 
 	root.AddCommand(newLinkCmd())
+	root.AddCommand(newSetupCmd())
 
 	return root
 }

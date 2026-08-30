@@ -1,0 +1,101 @@
+# Builds the installer and attaches it to a GitHub release.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  # So the installer can be built and downloaded as an artifact without
+  # cutting a release first - the only honest way to test a change to this
+  # file, since a tag cannot be re-pushed cleanly.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # From go.mod, so the toolchain cannot drift away from what the
+          # module declares.
+          go-version-file: go.mod
+          cache: true
+
+      # Fyne's OpenGL driver needs cgo, so a C compiler is not optional here.
+      # The runner image ships one; this fails loudly if that ever stops being
+      # true, rather than producing a build that dies on first launch.
+      - name: Check for a C compiler
+        run: gcc --version
+
+      - name: Vet and test
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Work out the version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/*') {
+            # Tags are written v1.2.3; the version itself has no v.
+            $v = $env:GITHUB_REF -replace '^refs/tags/v?', ''
+          } else {
+            # A manual run has no tag. Naming it after the commit keeps two
+            # test builds from being mistaken for each other.
+            $v = "0.0.0-dev+$($env:GITHUB_SHA.Substring(0,7))"
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "building $v"
+
+      # resource.syso is committed, so this picks up the icon with no extra
+      # step - the same plain `go build` that BUILD.md documents.
+      - name: Build
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          go build -o dist/lobby-iq.exe .
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer
+        run: |
+          # Braces are required: without them PowerShell reads the variable
+          # name as "ProgramFiles" and leaves "(x86)" as stray syntax.
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found at $iscc" }
+          & $iscc `
+            "/DAppVersion=${{ steps.version.outputs.version }}" `
+            installer\lobbyiq.iss
+
+      - name: Show what was produced
+        run: Get-ChildItem dist | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LobbyIQ-Setup-${{ steps.version.outputs.version }}
+          path: dist/LobbyIQ-Setup-*.exe
+          if-no-files-found: error
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/LobbyIQ-Setup-*.exe
+          generate_release_notes: true
+          body: |
+            Download **LobbyIQ-Setup-${{ steps.version.outputs.version }}.exe** below and run it.
+
+            It installs for the current user only, so there is no admin prompt.
+            It creates a desktop shortcut, seeds a `config.yaml`, and switches on
+            Rocket League's match export so the app works the first time you
+            open it.
+
+            Close Rocket League before installing: it rewrites its own settings
+            when it exits, which would undo that last step. The installer will
+            say so and offer to retry if it finds the game running.

@@ -1,0 +1,46 @@
+# Vet and test on every push and pull request.
+#
+# Separate from release.yml so that ordinary work gets a fast answer without
+# building an installer, and so a broken installer script cannot be mistaken
+# for broken code.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    # Windows, not Linux: the parts most likely to break - the Stats API
+    # config, the console attach, the GUI - are the Windows-only ones, and
+    # a Linux job would compile straight past them.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Check formatting
+        run: |
+          $unformatted = gofmt -l .
+          if ($unformatted) {
+            Write-Host "gofmt would change:"
+            $unformatted | ForEach-Object { Write-Host "  $_" }
+            exit 1
+          }
+
+      # The build is the thing users actually get, and it exercises cgo and the
+      # committed resource.syso that `go vet` alone does not.
+      - name: Build
+        run: go build -o lobby-iq.exe .

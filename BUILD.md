@@ -7,7 +7,7 @@ go build
 That's it. The resulting `lobby-iq.exe` opens the desktop GUI when you
 double-click it, with no console window behind it - no flags, no build script.
 
-Two things make that true, and both are easy to undo by accident:
+Three things make that true, and all are easy to undo by accident:
 
 - `internal/startup/subsystem_windows.go` passes `--subsystem,windows` to the
   linker from inside the code, so no console window appears.
@@ -17,7 +17,42 @@ Two things make that true, and both are easy to undo by accident:
   without ever running the app. That message goes to a stderr that a GUI
   process doesn't have, so the symptom is simply that nothing happens.
 
-Read the comments at both before removing them.
+- `resource.syso` in the repository root is a compiled Windows resource holding
+  the app icon. The Go toolchain links any `.syso` in the main package
+  automatically, which is why no build flag is needed. Delete it and the exe
+  gets Windows' blank default icon.
+
+Read the comments at the first two before removing them.
+
+### Rebuilding the icon
+
+Only needed when the source art changes. `resource.syso` is committed so that a
+plain `go build` stays enough.
+
+```
+go run ./tools/mkico -in assets/brand/emblem.png -out assets/brand/lobbyiq.ico
+go run github.com/akavel/rsrc@v0.10.2 -ico assets/brand/lobbyiq.ico -arch amd64 -o resource.syso
+```
+
+`tools/mkico` writes the seven sizes Windows asks for, as bitmaps below 128px
+and PNG above - see the comments there for why the two differ.
+
+## Building the installer
+
+CI does this on every tag; `.github/workflows/release.yml` is the reference.
+Locally you need [Inno Setup 6](https://jrsoftware.org/isdl.php):
+
+```
+mkdir dist
+go build -o dist/lobby-iq.exe .
+iscc /DAppVersion=0.0.0-dev installer\lobbyiq.iss
+```
+
+The result lands in `dist\`. The script is deliberately thin - it installs
+files, makes shortcuts, and calls `lobby-iq setup` to configure Rocket League.
+That command lives in `internal/rlsetup` and is covered by tests, because
+installer scripting is a bad place for logic that has to cope with OneDrive
+redirection, two different game stores and a config file the game owns.
 
 ## Running from a terminal
 

@@ -27,21 +27,41 @@ playing.
 Your own row is bold. LobbyIQ works out which player is you by watching which
 one the camera follows, so there is nothing to configure.
 
-## Getting started
+## Install
+
+Download the latest **LobbyIQ-Setup-*.exe** from
+[Releases](https://github.com/ShakedShitrit/lobby-iq/releases) and run it.
+
+It installs for you alone, so there is no admin prompt. It creates a desktop
+shortcut, writes a starting `config.yaml`, and switches on Rocket League's
+match export so the app works the first time you open it.
+
+**Close Rocket League first.** The game rewrites its own settings when it
+exits, which would undo that last step. The installer checks, and offers to
+retry if it finds the game running.
+
+### Building it yourself
 
 ```
 go build
 ```
 
 That produces `lobby-iq.exe`, which opens the GUI when double-clicked. See
-[BUILD.md](BUILD.md) for the Windows specifics.
-
-LobbyIQ reads Rocket League's Stats API on port 49123. That is the game's own
-default, configured in its `DefaultStatsAPI.ini`; if yours is set to something
-else, pass `--port` or set `port` in the config.
+[BUILD.md](BUILD.md) for the Windows specifics and for building the installer.
 
 Copy `config.example.yaml` to `config.yaml` and edit it — every setting is
 documented in the file. Running without one is fine; the defaults apply.
+
+Then run `lobby-iq setup` once, which is what the installer does for you: it
+points Rocket League's Stats API at the port LobbyIQ listens on. `lobby-iq
+setup --dry-run` shows what it would change without touching anything.
+
+### If matches stop appearing
+
+Run `lobby-iq setup` again. A Rocket League update can regenerate
+`TAStatsAPI.ini` from the game's own defaults and undo the change; the command
+is safe to run as often as you like, and says "already correct" when there is
+nothing to do.
 
 ### Rank and MMR need a one-time Epic sign-in
 
