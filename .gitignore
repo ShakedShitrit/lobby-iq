@@ -1,0 +1,30 @@
+# Build output. Named after the module, so this is what `go build` drops here.
+lobby-iq.exe
+lobby-iq
+
+# Runtime state, written next to the exe. All of it is personal: players.json
+# and capture.json carry other players' names and account IDs, self.json
+# carries yours.
+lobby-iq.log
+players.json
+self.json
+capture.json
+
+# Local configuration. It holds a Discord application ID and, optionally, an
+# Epic account ID; config.example.yaml is the tracked copy to start from.
+config.yaml
+
+# Epic credentials never live in the repo, but a misplaced copy would be worse
+# than a redundant rule.
+credentials.json
+
+# Editor and tool state.
+.idea/
+.vscode/
+.claude/settings.local.json
+
+# Local Go workspace. go.mod requires a published rlmmr so the repo builds for
+# anyone who clones it; go.work points at the checkout next door instead, for
+# working on both at once. That choice is per-machine, not per-repo.
+go.work
+go.work.sum

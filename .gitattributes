@@ -1,0 +1,6 @@
+# Keep line endings LF in the repository regardless of the checkout platform,
+# so a Windows clone does not turn every file into a diff for a Linux one.
+* text=auto eol=lf
+
+# Rank art is binary; normalising it would corrupt it.
+*.png binary

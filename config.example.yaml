@@ -1,0 +1,75 @@
+port: 49123
+log_level: info
+
+# Discord Rich Presence. Set this to your Discord application's client ID to
+# publish the live match to your Discord profile; see DISCORD.md.
+discord_client_id: ""
+
+# The card's images. Each value is either the key of an art asset uploaded to
+# the Discord application, or an https:// URL that Discord loads directly - a
+# URL needs nothing uploaded anywhere. Defaults are the uploaded-asset keys.
+discord_assets:
+  logo: "rocket_league"
+  blue: "team_blue"
+  orange: "team_orange"
+
+# Where the card's rank badge comes from.
+#
+#   config  read discord_ranks below - written by hand, never changes
+#   live    read your real rank from Rocket League's backend, refreshed after
+#           every match, with the MMR in the tooltip
+#
+# "live" needs a one-time Epic sign-in: run "lobby-iq link" once. Until that's
+# done this falls back to discord_ranks and says so in the log, so turning it on
+# early costs nothing.
+discord_rank_source: config
+
+# PATH to the Epic credentials file - not the credentials themselves, which are
+# never kept in here. A config file gets pasted into bug reports and committed
+# to repositories; a live Epic token must not travel with it. "lobby-iq link"
+# writes the real thing to %APPDATA%\rlmmr\credentials.json with owner-only
+# permissions.
+#
+# Leave this empty to use that default. Only set it to move the file somewhere
+# else, such as onto an encrypted volume.
+rlmmr_credentials: ""
+
+# Whose rank the card shows, as the Stats API spells it: "Epic|<hex>|0".
+#
+# Normally leave this EMPTY. LobbyIQ works out which player in the lobby is
+# you by watching which one the camera follows, and remembers the answer in
+# self.json - so there is nothing to set up and nothing to look up by hand.
+#
+# It matters because the account LobbyIQ signs in with need not be the
+# account playing. Rocket League's backend allows one live session per account
+# and evicts the older one, so signing in as the account in the game makes it
+# announce "you are not connected to Epic Games online services" - and with
+# lobby_mmr on, that lands at kickoff and costs the whole match. Pointing
+# rlmmr_credentials at a SECOND Epic account avoids it entirely; ratings are
+# public, so that account can still read yours and everyone else's.
+#
+# Set this only to override the detection - if you spectate a lot, or the log
+# says it could not tell which player was you.
+rlmmr_self_id: ""
+
+# Show every player's MMR at the start of a match, opponents included.
+#
+# Uses the same sign-in and the same session as live rank; the roster comes
+# from the game's own Stats API, which already reports each player's ID. Off by
+# default because it needs the sign-in to be set up.
+lobby_mmr: false
+
+# Your rank per gamemode, used when discord_rank_source is "config". The game's
+# Stats API doesn't report rank, so it's set here by hand; a mode listed below
+# shows that rank's badge as the card's large icon. Spellings are forgiving -
+# "Champion I", "champion 1" and "c1" all work. Comment a line out to fall back
+# to the logo for that mode.
+#
+# Both sources share one blind spot: the Stats API reports only how many players
+# are on a team, so a 2v2 could be Doubles or Hoops, and a 3v3 could be Standard,
+# Rumble, Dropshot or Snow Day. Live rank assumes the main ranked playlist for
+# the size.
+discord_ranks:
+  "1v1": "Diamond II"
+  "2v2": "gc3"
+  "3v3": "c2"
