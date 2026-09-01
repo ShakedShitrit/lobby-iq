@@ -24,6 +24,11 @@ type Install struct {
 	Store string
 }
 
+// ExePath is the game executable inside the installation. It is the same
+// relative path on both stores, and its presence is what made this a valid
+// install in the first place.
+func (i Install) ExePath() string { return filepath.Join(i.Path, gameExeRelative) }
+
 // Report describes what Apply found and did. Every field is filled in whether
 // or not anything changed, so a caller can explain the outcome either way.
 type Report struct {

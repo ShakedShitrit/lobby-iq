@@ -51,7 +51,7 @@ func PerformLink(cfg *config.Config, code string, writeConfig bool) (LinkResult,
 	}
 	result.AccountID = creds.AccountID
 
-	client, err := rlmmr.New(rlmmr.Options{CredentialsPath: cfg.RLMMRCredentials})
+	client, err := rlmmr.New(clientOptions(cfg))
 	if err != nil {
 		return result, fmt.Errorf("signed in, but connecting failed: %w", err)
 	}
