@@ -5,7 +5,7 @@ go 1.24.5
 require (
 	fyne.io/fyne/v2 v2.8.0
 	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/dank/rlapi v0.1.27
+	github.com/dank/rlapi v0.1.28
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
