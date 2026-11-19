@@ -64,6 +64,37 @@ rlmmr_self_id: ""
 # default because it needs the sign-in to be set up.
 lobby_mmr: false
 
+# Record what you do on your controller (or keyboard) during each match, to
+# watch alongside the match's saved replay with "lobby-iq inputs view".
+#
+# Recording starts when a match starts and is saved when it ends, one file per
+# match. Recordings are temporary: only the newest "keep" are kept, in
+# recordings/tmp. Save the match's replay in Rocket League and its recording
+# is kept for good instead, in recordings/saved - it's never deleted. The
+# keyboard is only read while Rocket League is the window in front - nothing
+# typed anywhere else is ever recorded.
+#
+# Saved replays leave out goal replays, so a recording is split at every
+# kickoff and each kickoff is lined up with the replay separately. See
+# docs/input-recording.md.
+input_recording:
+  enabled: false
+  # How many temporary recordings to keep.
+  keep: 20
+  # Where Rocket League saves replays. Empty means the usual place, the Demos
+  # folder under Documents\My Games\Rocket League\TAGame.
+  replays_dir: ""
+  # Empty means a "recordings" folder next to players.json.
+  dir: ""
+  # auto, or any of: xinput (Xbox, or a pad Steam Input / DS4Windows presents
+  # as one), hid (DualShock 4 / DualSense connected directly), kbm.
+  devices: auto
+  poll_hz: 250
+  # Open the viewer by itself when you start watching the replay of a
+  # recorded match, already following along. It can take focus from the game
+  # as it opens; turn this off to open it yourself instead.
+  open_viewer_on_replay: true
+
 # Your rank per gamemode, used when discord_rank_source is "config". The game's
 # Stats API doesn't report rank, so it's set here by hand; a mode listed below
 # shows that rank's badge as the card's large icon. Spellings are forgiving -

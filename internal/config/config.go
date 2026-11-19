@@ -57,6 +57,12 @@ type Config struct {
 	// LobbyMMR turns on reading every player's MMR at the start of a match.
 	// Needs the same sign-in as live rank, and shares its session.
 	LobbyMMR bool `mapstructure:"lobby_mmr"`
+	// InputRecording records your controller or keyboard during each match,
+	// for playing back alongside the match's replay.
+	InputRecording InputRecording `mapstructure:"input_recording"`
+	// DumpEvents, when set, is a file every raw Stats API event is appended
+	// to. A diagnostic for seeing what the game actually sends.
+	DumpEvents string `mapstructure:"dump_events"`
 
 	// SourceFile is the config file these values came from, or empty if none
 	// was found. Set by Load; not itself a setting.
@@ -73,6 +79,42 @@ type DiscordAssets struct {
 	// Blue and Orange are the small badge, chosen by your team.
 	Blue   string `mapstructure:"blue"`
 	Orange string `mapstructure:"orange"`
+}
+
+// InputRecording configures the per-match input recorder.
+type InputRecording struct {
+	Enabled bool `mapstructure:"enabled"`
+	// Keep is how many temporary recordings to keep; the oldest beyond it
+	// are deleted. Recordings kept because their replay was saved don't
+	// count towards it and are never deleted.
+	Keep int `mapstructure:"keep"`
+	// ReplaysDir is where Rocket League saves replays, watched to keep the
+	// recordings of matches whose replay you save. Empty means the game's
+	// usual Demos folder.
+	ReplaysDir string `mapstructure:"replays_dir"`
+	// Dir is where recordings go. Empty means a "recordings" folder beside
+	// players.json.
+	Dir string `mapstructure:"dir"`
+	// Devices is "auto" for everything, or a comma-separated list of
+	// "xinput", "hid" (PlayStation pads) and "kbm" (keyboard and mouse).
+	Devices string `mapstructure:"devices"`
+	// PollHz is how many times a second devices are read.
+	PollHz int `mapstructure:"poll_hz"`
+	// OpenViewerOnReplay opens the input viewer, following along, when the
+	// saved replay of a recorded match starts playing.
+	OpenViewerOnReplay bool `mapstructure:"open_viewer_on_replay"`
+}
+
+// DeviceList returns Devices as a list, empty meaning all of them.
+func (r InputRecording) DeviceList() []string {
+	var kinds []string
+	for _, k := range strings.Split(r.Devices, ",") {
+		k = strings.ToLower(strings.TrimSpace(k))
+		if k != "" && k != "auto" && k != "all" {
+			kinds = append(kinds, k)
+		}
+	}
+	return kinds
 }
 
 // DiscordEnabled reports whether Rich Presence should be published.
@@ -121,6 +163,14 @@ func Load(cfgFile string, flags *pflag.FlagSet) (*Config, error) {
 	v.SetDefault("rlmmr_credentials", "")
 	v.SetDefault("rlmmr_self_id", "")
 	v.SetDefault("lobby_mmr", false)
+	v.SetDefault("input_recording.enabled", false)
+	v.SetDefault("input_recording.keep", 20)
+	v.SetDefault("input_recording.replays_dir", "")
+	v.SetDefault("input_recording.dir", "")
+	v.SetDefault("input_recording.devices", "auto")
+	v.SetDefault("input_recording.poll_hz", 250)
+	v.SetDefault("input_recording.open_viewer_on_replay", true)
+	v.SetDefault("dump_events", "")
 
 	v.SetEnvPrefix("LOBBYIQ")
 	v.AutomaticEnv()
@@ -139,6 +189,12 @@ func Load(cfgFile string, flags *pflag.FlagSet) (*Config, error) {
 			return nil, err
 		}
 		if err := v.BindPFlag("discord_disabled", flags.Lookup("no-discord")); err != nil {
+			return nil, err
+		}
+		if err := v.BindPFlag("input_recording.enabled", flags.Lookup("record-inputs")); err != nil {
+			return nil, err
+		}
+		if err := v.BindPFlag("dump_events", flags.Lookup("dump-events")); err != nil {
 			return nil, err
 		}
 	}

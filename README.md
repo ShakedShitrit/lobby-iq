@@ -91,6 +91,17 @@ already uploaded to it, so there is no developer portal detour. Clear
 `discord_client_id` to turn it off, or point it at your own application to
 carry your own name and art. Details in [DISCORD.md](DISCORD.md).
 
+### Input recording
+
+Set `input_recording.enabled: true` (or pass `--record-inputs`) and every match
+gets a recording of what you did on your controller — Xbox, DualShock 4,
+DualSense or keyboard. Open that match's replay in Rocket League and the
+recording comes up as an animated controller, following the replay by itself
+(or use **Inputs** / `lobby-iq inputs view`). Recordings are temporary — the
+newest 20 are kept — except for matches whose replay you save, whose
+recordings are kept for good. Details in
+[docs/input-recording.md](docs/input-recording.md).
+
 ## Command line
 
 The GUI is the default; the flags are there when you want them.
@@ -99,6 +110,8 @@ The GUI is the default; the flags are there when you want them.
 lobby-iq                  desktop GUI
 lobby-iq --lightweight    terminal UI instead
 lobby-iq link             Epic sign-in
+lobby-iq inputs view      play back recorded controller inputs
+lobby-iq inputs list      list the recordings
 lobby-iq --help
 ```
 
@@ -113,6 +126,8 @@ found:
 - `lobby-iq.log` — the log; `--log-level debug` for more
 - `players.json` — the GAMES column's history
 - `self.json` — which player it worked out is you
+- `recordings/tmp/`, `recordings/saved/` — controller recordings, when input
+  recording is on: temporary ones, and those kept because you saved the replay
 
 None of them are secret, but all of them name real people, so they are
 gitignored.
@@ -126,6 +141,8 @@ internal/lobby/     rank and MMR for every player, cached per playlist
 internal/selfid/    works out which player is the local one
 internal/liverank/  your own rank, for the Discord card
 internal/presence/  builds the Discord Rich Presence card
+internal/inputrec/  records controller and keyboard input per match
+internal/inputview/ plays those recordings back
 internal/discord/   Discord IPC client
 internal/app/       the GUI, the terminal UI, and the Epic sign-in window
 assets/ranks/       rank badges, embedded into the binary

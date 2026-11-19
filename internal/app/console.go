@@ -10,6 +10,7 @@ import (
 	"github.com/ShakedShitrit/lobby-iq/internal/browser"
 	"github.com/ShakedShitrit/lobby-iq/internal/config"
 	"github.com/ShakedShitrit/lobby-iq/internal/history"
+	"github.com/ShakedShitrit/lobby-iq/internal/inputrec"
 	"github.com/ShakedShitrit/lobby-iq/internal/lobby"
 	"github.com/ShakedShitrit/lobby-iq/internal/rlstats"
 	"github.com/ShakedShitrit/lobby-iq/internal/session"
@@ -18,6 +19,13 @@ import (
 type matchStateMsg rlstats.MatchState
 
 type openedMsg struct{ err error }
+
+// recordingMsg says input recording started or stopped; View asks the
+// recorder which.
+type recordingMsg struct{}
+
+// statusMsg replaces the status line.
+type statusMsg string
 
 // lobbyUpdatedMsg says ratings changed. It carries nothing: the view reads
 // them from the lobby source, so arriving is the whole message.
@@ -29,9 +37,11 @@ type model struct {
 	session *session.Tracker
 	// lobby is nil unless lobby_mmr is on, in which case the MMR column is
 	// left out entirely rather than shown empty.
-	lobby  *lobby.Source
-	cursor int
-	status string
+	lobby *lobby.Source
+	// recorder is nil unless input recording is on.
+	recorder *inputrec.Recorder
+	cursor   int
+	status   string
 }
 
 func (m model) Init() tea.Cmd { return nil }
@@ -80,6 +90,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case recordingMsg:
+		return m, nil
+
+	case statusMsg:
+		m.status = string(msg)
+		return m, nil
+
 	case lobbyUpdatedMsg:
 		// Nothing to store: View reads the ratings straight from the source,
 		// and returning is enough to trigger a redraw.
@@ -96,6 +113,9 @@ func openBrowserCmd(url string) tea.Cmd {
 
 func (m model) View() string {
 	var b strings.Builder
+	if m.recorder.Recording() {
+		b.WriteString("\x1b[31m● REC\x1b[0m  recording inputs\n")
+	}
 	if m.state.Arena != "" {
 		fmt.Fprintf(&b, "Arena: %s\n\n", m.state.Arena)
 	}
@@ -213,8 +233,20 @@ func RunConsole(cfg *config.Config) error {
 	// After the card, since the card reads from the rank source.
 	defer closeBackend()
 
+	// The Watch goroutine can report a kept recording before the program
+	// below exists to show it, so reports wait here.
+	kept := make(chan string, 16)
+	rec := startRecorder(cfg, func(_ string, replay inputrec.ReplayInfo) {
+		select {
+		case kept <- "kept inputs for saved replay " + replayLabel(replay):
+		default:
+		}
+	})
+	onEvent, closeDump := eventSink(cfg, rec, nil)
+	defer closeDump()
+
 	p := tea.NewProgram(
-		model{history: hist, session: sess, lobby: back.lobby},
+		model{history: hist, session: sess, lobby: back.lobby, recorder: rec},
 		tea.WithAltScreen())
 
 	// Ratings arrive on their own schedule, not with match state, so a landed
@@ -223,13 +255,30 @@ func RunConsole(cfg *config.Config) error {
 		back.lobby.OnUpdate(func() { p.Send(lobbyUpdatedMsg{}) })
 	}
 
-	go rlstats.Watch(addr, func(s rlstats.MatchState) {
-		hist.Observe(s.MatchGuid, s.Players)
-		sess.Observe(s)
-		rich.Observe(s)
-		back.Observe(s)
-		p.Send(matchStateMsg(s))
+	rec.OnChange(func(bool) { p.Send(recordingMsg{}) })
+	go func() {
+		for msg := range kept {
+			p.Send(statusMsg(msg))
+		}
+	}()
+	// The terminal can't open the viewer window itself, so it says how to.
+	rec.OnReplay(func(_, path string) {
+		p.Send(statusMsg("watching the replay of a recorded match - run: lobby-iq inputs view \"" + path + "\""))
 	})
+
+	go rlstats.WatchEvents(addr, func(s rlstats.MatchState) {
+		// A saved replay is reported like the match being played again;
+		// counting it would add a game with everyone in it and, at its end,
+		// a second win or loss.
+		if !s.HistoryReplay {
+			hist.Observe(s.MatchGuid, s.Players)
+			sess.Observe(s)
+			rich.Observe(s)
+			back.Observe(s)
+		}
+		rec.Observe(s)
+		p.Send(matchStateMsg(s))
+	}, onEvent)
 
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("running tui: %w", err)

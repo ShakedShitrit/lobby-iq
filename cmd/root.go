@@ -45,9 +45,12 @@ func newRootCmd() *cobra.Command {
 	root.Flags().Bool("lightweight", false, "run the lightweight terminal UI instead of the desktop GUI")
 	root.Flags().String("discord-client-id", "", "Discord application client ID, enabling Rich Presence (see DISCORD.md)")
 	root.Flags().Bool("no-discord", false, "disable Discord Rich Presence even if a client ID is configured")
+	root.Flags().Bool("record-inputs", false, "record your controller or keyboard during each match (see docs/input-recording.md)")
+	root.Flags().String("dump-events", "", "append every raw Stats API event to this file, for diagnosing what the game sends")
 
 	root.AddCommand(newLinkCmd())
 	root.AddCommand(newSetupCmd())
+	root.AddCommand(newInputsCmd())
 
 	return root
 }

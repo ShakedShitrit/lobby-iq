@@ -61,6 +61,31 @@ type MatchState struct {
 	Replay bool
 	// Players is sorted by TeamNum, then Name.
 	Players []Player
+	// HistoryReplay is true while a saved replay is being watched (one opened
+	// from Match History), as opposed to a match being played. The game
+	// reports a replay much as it does a live match, under the original
+	// match's ID, so without this a replay looks like the match all over
+	// again.
+	HistoryReplay bool
+	// ReplayFrame and ReplayElapsed are the replay's own position - frame
+	// number and seconds since the game started - when HasReplayTime is set,
+	// which the game does only while some replay is playing.
+	HasReplayTime bool
+	ReplayFrame   int
+	ReplayElapsed float64
+}
+
+// Event is one raw message from the Stats API, for consumers that need more
+// than MatchState carries - kickoffs, goals and goal replays, say. Data is the
+// event's own JSON payload, already unwrapped from the string the wire
+// format nests it in.
+type Event struct {
+	Name string
+	Data json.RawMessage
+	// At is when the message was read off the socket, carrying Go's
+	// monotonic clock reading so intervals between events stay exact even if
+	// the wall clock is adjusted mid-match.
+	At time.Time
 }
 
 type envelope struct {
@@ -77,13 +102,15 @@ type updateStateData struct {
 			TeamNum int    `json:"TeamNum"`
 			Score   int    `json:"Score"`
 		} `json:"Teams"`
-		Arena       string `json:"Arena"`
-		TimeSeconds int    `json:"TimeSeconds"`
-		Overtime    bool   `json:"bOvertime"`
-		Replay      bool   `json:"bReplay"`
-		HasWinner   bool   `json:"bHasWinner"`
-		Winner      string `json:"Winner"`
-		HasTarget   bool   `json:"bHasTarget"`
+		Arena       string   `json:"Arena"`
+		TimeSeconds int      `json:"TimeSeconds"`
+		Frame       *int     `json:"Frame"`
+		Elapsed     *float64 `json:"Elapsed"`
+		Overtime    bool     `json:"bOvertime"`
+		Replay      bool     `json:"bReplay"`
+		HasWinner   bool     `json:"bHasWinner"`
+		Winner      string   `json:"Winner"`
+		HasTarget   bool     `json:"bHasTarget"`
 		Target      struct {
 			Name    string `json:"Name"`
 			TeamNum int    `json:"TeamNum"`
@@ -95,6 +122,13 @@ type updateStateData struct {
 // latest known MatchState whenever it changes. It reconnects with backoff on
 // failure and never returns.
 func Watch(addr string, onUpdate func(MatchState)) {
+	WatchEvents(addr, onUpdate, nil)
+}
+
+// WatchEvents is Watch that also hands every raw message, UpdateState
+// included, to onEvent before it is folded into MatchState. A nil onEvent
+// makes it identical to Watch.
+func WatchEvents(addr string, onUpdate func(MatchState), onEvent func(Event)) {
 	backoff := time.Second
 	for {
 		zap.L().Info("connecting", zap.String("addr", addr))
@@ -116,6 +150,12 @@ func Watch(addr string, onUpdate func(MatchState)) {
 		scores := map[int]int{}
 		arena := ""
 		last := MatchState{TargetTeamNum: -1}
+		// history says whether the current match ID is a saved replay
+		// being watched. It's decided when the ID first appears: a live
+		// match starts without replay timing, a saved replay has it from the
+		// first tick. ReplayCreated, when it arrives, settles it either way.
+		history := false
+		replayGuid := ""
 
 		dec := json.NewDecoder(conn)
 		for {
@@ -123,6 +163,19 @@ func Watch(addr string, onUpdate func(MatchState)) {
 			if err := dec.Decode(&env); err != nil {
 				zap.L().Warn("read error", zap.Error(err))
 				break
+			}
+			if onEvent != nil {
+				onEvent(Event{Name: env.Event, Data: json.RawMessage(env.Data), At: time.Now()})
+			}
+
+			switch env.Event {
+			case "ReplayCreated":
+				var data struct{ MatchGuid string }
+				_ = json.Unmarshal([]byte(env.Data), &data)
+				replayGuid = data.MatchGuid
+				history = true
+			case "MatchDestroyed":
+				replayGuid = ""
 			}
 
 			// MatchEnded carries no roster, so it's republished as the last
@@ -158,6 +211,9 @@ func Watch(addr string, onUpdate func(MatchState)) {
 				scores[t.TeamNum] = t.Score
 			}
 			arena = data.Game.Arena
+			if data.MatchGuid != last.MatchGuid {
+				history = data.Game.Frame != nil || (replayGuid != "" && data.MatchGuid == replayGuid)
+			}
 
 			target, targetName := -1, ""
 			if data.Game.HasTarget {
@@ -181,6 +237,12 @@ func Watch(addr string, onUpdate func(MatchState)) {
 				Overtime:      data.Game.Overtime,
 				Replay:        data.Game.Replay,
 				Players:       sortedPlayers(players),
+				HistoryReplay: history,
+			}
+			if data.Game.Frame != nil && data.Game.Elapsed != nil {
+				last.HasReplayTime = true
+				last.ReplayFrame = *data.Game.Frame
+				last.ReplayElapsed = *data.Game.Elapsed
 			}
 			onUpdate(last)
 		}

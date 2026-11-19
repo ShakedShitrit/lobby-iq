@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"image/color"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/ShakedShitrit/lobby-iq/internal/browser"
 	"github.com/ShakedShitrit/lobby-iq/internal/config"
 	"github.com/ShakedShitrit/lobby-iq/internal/history"
+	"github.com/ShakedShitrit/lobby-iq/internal/inputrec"
+	"github.com/ShakedShitrit/lobby-iq/internal/inputview"
 	"github.com/ShakedShitrit/lobby-iq/internal/lobby"
 	"github.com/ShakedShitrit/lobby-iq/internal/rlstats"
 	"github.com/ShakedShitrit/lobby-iq/internal/session"
@@ -219,6 +222,69 @@ func RunGUI(cfg *config.Config) error {
 
 	status := canvas.NewText("Select a player to open their tracker.network profile", pal.Muted)
 
+	// At most one viewer at a time; only touched on Fyne's goroutine.
+	var viewer *inputview.Viewer
+
+	rec := startRecorder(cfg, func(path string, replay inputrec.ReplayInfo) {
+		fyne.Do(func() {
+			status.Color = pal.Ok
+			status.Text = "Kept inputs for saved replay " + replayLabel(replay)
+			status.Refresh()
+			if viewer != nil && !viewer.Closed() {
+				viewer.Refresh()
+			}
+		})
+	})
+	// The input viewer listens through bus rather than opening a Stats API
+	// connection of its own.
+	var bus *rlstats.Broadcaster
+	if rec != nil {
+		bus = &rlstats.Broadcaster{}
+	}
+	onEvent, closeDump := eventSink(cfg, rec, bus)
+	defer closeDump()
+
+	openViewer := func(path string) {
+		if viewer != nil && !viewer.Closed() {
+			if path != "" {
+				viewer.ShowRecording(path)
+			} else {
+				viewer.Focus()
+			}
+			return
+		}
+		viewer = inputview.Open(a, rec.Store(), path, bus)
+	}
+	// Watching the replay of a recorded match brings its recording up,
+	// already following along.
+	rec.OnReplay(func(_, path string) {
+		if cfg.InputRecording.OpenViewerOnReplay {
+			fyne.Do(func() { openViewer(path) })
+		}
+	})
+
+	// Shown only while a match is being recorded, so it's plain whether the
+	// match in progress will be there to review afterwards.
+	recLabel := canvas.NewText("● REC", pal.Danger)
+	recLabel.TextStyle = fyne.TextStyle{Bold: true}
+	recLabel.Hide()
+	rec.OnChange(func(on bool) {
+		fyne.Do(func() {
+			if on {
+				recLabel.Show()
+			} else {
+				recLabel.Hide()
+			}
+		})
+	})
+	rec.OnSaved(func(path string) {
+		fyne.Do(func() {
+			status.Color = pal.Ok
+			status.Text = "Saved inputs: " + filepath.Base(path)
+			status.Refresh()
+		})
+	})
+
 	// sessionBox is rebuilt wholesale on each refresh: the set of gamemodes
 	// grows as you play, so there's no fixed set of labels to update in
 	// place.
@@ -416,6 +482,8 @@ func RunGUI(cfg *config.Config) error {
 		title.Color = pal.Text
 		arenaLabel.Color = pal.Muted
 		status.Color = pal.Muted
+		recLabel.Color = pal.Danger
+		recLabel.Refresh()
 		title.Refresh()
 		arenaLabel.Refresh()
 		status.Refresh()
@@ -464,7 +532,7 @@ func RunGUI(cfg *config.Config) error {
 	// The mark and the two lines it labels are one block, so the emblem sits
 	// beside them rather than above: stacked, it would read as a separate
 	// banner and push the table down by its full height.
-	var brandRow fyne.CanvasObject = container.NewVBox(title, arenaLabel)
+	var brandRow fyne.CanvasObject = container.NewVBox(container.NewHBox(title, recLabel), arenaLabel)
 	if emblem := newBrandEmblem(); emblem != nil {
 		brandRow = container.NewHBox(emblem, brandRow)
 	}
@@ -488,9 +556,17 @@ func RunGUI(cfg *config.Config) error {
 	// once more when an account changes, and does not belong in the header
 	// competing with what the window is actually for. The status line keeps
 	// the rest of the row and expands into it.
+	footerRight := container.NewHBox()
+	// Only offered when recording is on: with it off there is nothing to
+	// view, and the button would only lead to an empty list.
+	if rec != nil {
+		footerRight.Add(widget.NewButton("Inputs", func() { openViewer("") }))
+	}
+	footerRight.Add(newLinkButton(a, cfg, back))
+
 	footer := container.NewBorder(
 		nil, nil,
-		nil, newLinkButton(a, cfg, back),
+		nil, footerRight,
 		container.NewPadded(status),
 	)
 
@@ -504,11 +580,17 @@ func RunGUI(cfg *config.Config) error {
 	w.SetContent(content)
 	w.Resize(preferredWindowSize(content, cols))
 
-	go rlstats.Watch(addr, func(s rlstats.MatchState) {
-		hist.Observe(s.MatchGuid, s.Players)
-		sess.Observe(s)
-		rich.Observe(s)
-		back.Observe(s)
+	go rlstats.WatchEvents(addr, func(s rlstats.MatchState) {
+		// A saved replay is reported like the match being played again;
+		// counting it would add a game with everyone in it and, at its end,
+		// a second win or loss.
+		if !s.HistoryReplay {
+			hist.Observe(s.MatchGuid, s.Players)
+			sess.Observe(s)
+			rich.Observe(s)
+			back.Observe(s)
+		}
+		rec.Observe(s)
 
 		mu.Lock()
 		state = s
@@ -522,7 +604,7 @@ func RunGUI(cfg *config.Config) error {
 			refreshSession()
 			table.Refresh()
 		})
-	})
+	}, onEvent)
 
 	w.ShowAndRun()
 	return nil

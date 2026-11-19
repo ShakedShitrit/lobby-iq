@@ -14,6 +14,8 @@ lobby-iq.log
 players.json
 self.json
 capture.json
+# Input recordings carry match IDs and, through their events, player names.
+/recordings/
 
 # Local configuration. It holds a Discord application ID and, optionally, an
 # Epic account ID; config.example.yaml is the tracked copy to start from.
